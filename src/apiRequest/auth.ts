@@ -12,6 +12,9 @@ const auth = {
   logout: () => {
     store.dispatch(handleLogout())
     toast.success('Đăng xuất thành công')
+  },
+  callLogout: async () => {
+    return await instance.post('/auth/logout')
   }
 }
 

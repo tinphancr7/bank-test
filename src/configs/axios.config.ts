@@ -1,9 +1,7 @@
 import {
   clearLS,
   getAccessTokenFromLS,
-  getRefreshTokenFromLS,
   setAccessTokenToLS,
-  setRefreshTokenToLS,
   setUserToLS
 } from '@/utils/auth'
 import axios, { type AxiosInstance } from 'axios'
@@ -25,7 +23,8 @@ class Http {
       timeout: 50000,
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      withCredentials: true
     })
 
     this.instance.interceptors.request.use(
@@ -62,29 +61,26 @@ class Http {
 
       async (error) => {
         const originalRequest = error.config
+
         if (
           error.response.status === 401 &&
           !originalRequest._retry &&
-          error.response?.data?.message === 'EXPIRED_ACCESS_TOKEN'
+          error.response?.data?.message === 'JWT token has expired'
         ) {
-          if (!this.refreshTokenReq) {
-            this.refreshTokenReq = this.refreshAccessToken()
-          }
-          originalRequest._retry = true
-
           try {
+            if (!this.refreshTokenReq) {
+              this.refreshTokenReq = this.refreshAccessToken()
+            }
+
+            originalRequest._retry = true
             const { accessToken } = await this.refreshTokenReq
             this.refreshTokenReq = null
 
             // Retry the original request with the new access token.
             originalRequest.headers['Authorization'] = `Bearer ${accessToken}`
+
             return this.instance(originalRequest)
           } catch (refreshError) {
-            this.refreshTokenReq = null
-            console.error('Token refresh failed:', refreshError)
-            this.accessToken = null
-            this.refreshToken = null
-            clearLS()
             return Promise.reject(refreshError)
           }
         }
@@ -95,7 +91,10 @@ class Http {
 
   private async refreshAccessToken() {
     try {
-      const response = await axios.get(`${BACKEND_URL}/auth/refresh`)
+      const response = await axios.get(`${BACKEND_URL}/auth/refresh`, {
+        withCredentials: true
+      })
+
       const { access_token } = response?.data?.data
 
       this.accessToken = access_token
@@ -109,10 +108,12 @@ class Http {
 
       return { accessToken: access_token }
     } catch (error) {
-      throw new Error('Unable to refresh token')
+      this.refreshTokenReq = null
+      this.accessToken = null
+      clearLS()
     }
   }
 }
 
-const http = new Http().instance
-export default http
+const { instance } = new Http()
+export default instance

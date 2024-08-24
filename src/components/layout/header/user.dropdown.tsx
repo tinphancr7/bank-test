@@ -6,8 +6,40 @@ import {
   DropdownTrigger
 } from '@nextui-org/react'
 import auth from '@/apiRequest/auth'
+import { useAppDispatch } from '@/hooks/useAppDispatch'
+import { useNavigate } from 'react-router-dom'
+import NotifyMessage from '@/utils/notify'
+import { handleLogout } from '@/redux/slices/auth.slice'
+import { useSelector } from 'react-redux'
+import { useEffect } from 'react'
+import { LocalStorageEventTarget } from '@/utils/auth'
 
 const UserDropdown = () => {
+  const dispatch = useAppDispatch()
+
+  const navigate = useNavigate()
+  const handleLogoutUser = async () => {
+    const res = await auth.callLogout()
+    if (res && res.data?.data) {
+      dispatch(handleLogout())
+      NotifyMessage('Đăng xuất thành công', 'success')
+      navigate('/login')
+    }
+  }
+  const { isLoggedIn } = useSelector((state) => state.auth)
+  const autoLogout = () => {
+    dispatch(handleLogout())
+    navigate('/login')
+  }
+  useEffect(() => {
+    if (isLoggedIn) {
+      LocalStorageEventTarget.addEventListener('clearLS', autoLogout)
+    }
+
+    return () => {
+      LocalStorageEventTarget.removeEventListener('clearLS', autoLogout)
+    }
+  }, [isLoggedIn])
   return (
     <Dropdown>
       <DropdownTrigger>
@@ -21,7 +53,7 @@ const UserDropdown = () => {
           key='delete'
           className='text-danger'
           color='danger'
-          onClick={() => auth.logout()}
+          onClick={handleLogoutUser}
         >
           Đăng xuất
         </DropdownItem>

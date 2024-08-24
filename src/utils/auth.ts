@@ -8,7 +8,6 @@ export const setRefreshTokenToLS = (refreshToken: string) => {
 
 export const clearLS = () => {
   localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
   localStorage.removeItem('user')
   const clearLSEvent = new Event('clearLS')
   LocalStorageEventTarget.dispatchEvent(clearLSEvent)
